@@ -1,9 +1,16 @@
 <script context="module" lang="ts">
 	import { enhance } from '$lib/form';
 	import type { Load } from '@sveltejs/kit';
+    import { langs$ } from '$lib/store';
+    import { get } from 'svelte/store';
 
 	// see https://kit.svelte.dev/docs#loading
 	export const load: Load = async ({ fetch }) => {
+        langs$.update(ls => [...ls, `anotherLang.${ls.length}`])
+
+        console.log(get(langs$).length) // This should be always 1 in devtools when reloading the page /todo (or higher if you are moving in and out with the router)
+        // although, this number is getting increased in the server's memory per page reload and this is shared by all web visitors.
+
 		const res = await fetch('/todos.json');
 
 		if (res.ok) {
@@ -26,6 +33,7 @@
 	import { scale } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 
+
 	type Todo = {
 		uid: string;
 		created_at: Date;
@@ -46,11 +54,42 @@
 </script>
 
 <svelte:head>
-	<title>Todos</title>
+	<title>Todos {$langs$.length}</title>
 </svelte:head>
 
 <div class="todos">
-	<h1>Todos</h1>
+	<h1>Todos {$langs$.length}</h1>
+    <h2 style="color: red">
+        Although what you see above is "Todos 1",
+        if you check the SSR version by disabling
+        Javascript of viewing the page source, you
+        will notice the counter is going up non-stop
+        as the server is keeping the value in memory
+        upon new request.
+        <br>
+        <br>
+        (You might also notice the number shifting
+        in subsequent calls when the browser is
+        hydrating the page to fix the issue)
+        <br>
+        <br>
+        Even worst, you can open several tabs in
+        incognito, and other browsers and all of
+        them are going to keep the same SSR counter.
+        <br>
+        <br>
+        This is happening in Dev mode, preview mode
+        and even in production if used in Netlify,
+        for instance, where server's instances are
+        awake for long enough to proccess several
+        client request.
+        <br>
+        <br>
+        This makes the user data to be exposed to XSS
+        attacks if the developers are not aware of this,
+        and if the sveltekit cannot enforce a clean
+        run per server call.
+    </h2>
 
 	<form
 		class="new"
